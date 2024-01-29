@@ -26,3 +26,12 @@
 | **Docker Compose: Build and start**           | `docker-compose up --build -d`                   |
 
 Note: Replace placeholders such as `<image_name>`, `<container_id>`, `<host_port>`, `<container_port>`, etc., with your actual values. This cheat sheet covers basic Docker commands and Docker Compose commands.
+
+# Do not run containers as the root user
+- `Privilege Escalation`: If an attacker gains control of a process within a container running as the root user, they might be able to escalate their privileges and potentially compromise the host system. Running containers with non-root users helps contain potential security breaches within the container.
+
+- `Host File System Access`: A container running as root has more access to the host file system, which increases the risk of unintended modifications or deletions of important system files. Running containers with non-root users limits the impact of potential file system-related security issues.
+
+- `Security Vulnerabilities`: Some software inside containers may have security vulnerabilities. Running as a non-root user limits the potential damage that an attacker can do in case they exploit such vulnerabilities.
+
+- `Principle of Least Privilege`: The principle of least privilege suggests that processes and users should have the minimum level of access required to perform their tasks. Running containers with the root user violates this principle and increases the attack surface.
