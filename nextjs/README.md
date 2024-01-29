@@ -7,7 +7,7 @@
 
 ### Basic Dockerfile
 ```
-FROM node:14-alpine
+FROM node:20-alpine
 
 # Đặt đường dẫn trong container nơi ta sẽ đưa code vào
 WORKDIR /app
