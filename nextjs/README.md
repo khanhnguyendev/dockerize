@@ -97,5 +97,130 @@ $ docker images | grep example
 > [!NOTE]
 > khi push lên registry thường nó sẽ được nén lại size thực tế trên registry cỡ bằng 1/2->1/3
 
+## Analysis
+- `package.json` ta thấy rằng có rất nhiều packages ở đó, nhưng thực tế, sau bước yarn build thì số package ta thực tế cần không nhiều như thế, nhiều package -> node_modules sẽ to, thậm chí rất to -> size image to
+- `yarn build` thì cái ta thực tế cần chỉ là folder .next hay public và node_modules mà thôi, các folder khác như pages, lib...(.eslint, .prettier...) không cần nữa
+- `node_modules` chỉ cần trước lúc yarn build, sau đó thì vì ko cần nhiều package nữa nên ta chỉ cần node_modules dạng tí hon thôi
+
+## Optimize with Multistage
+- `package.json`
+Hiện tại tất cả mọi package trong package.json đang được đặt ở dependencies, ta tách ra cái nào cần cho lúc dev ở local thì đưa nó vào devDependencies, lát nữa yarn build xong thì loại bỏ nó khỏi node_modules
+- `Multistages`
+Các stage ta chỉ COPY những thứ thật cần thiết của stage trước đó làm "gốc" cho stage hiện tại
+
+> Current package.json
+```
+{
+  "name": "nextjs-example",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "react": "^18",
+    "react-dom": "^18",
+    "next": "14.1.0",
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "postcss": "^8",
+    "tailwindcss": "^3.3.0",
+    "eslint": "^8",
+    "eslint-config-next": "14.1.0"
+  },
+  "devDependencies": {
+  }
+}
+```
+> Optimized package.json
+```
+{
+  "name": "nextjs-example",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "react": "^18",
+    "react-dom": "^18",
+    "next": "14.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "postcss": "^8",
+    "tailwindcss": "^3.3.0",
+    "eslint": "^8",
+    "eslint-config-next": "14.1.0"
+  }
+}
+```
+
+### Multistage Dockerfile
+```
+# Install dependencies only when needed
+FROM node:20-alpine AS deps
+
+WORKDIR /app
+COPY package.json ./
+RUN yarn install --frozen-lockfile
+
+# Rebuild the source code only when needed
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY . .
+COPY --from=deps /app/node_modules ./node_modules
+RUN yarn build && yarn install --production --ignore-scripts --prefer-offline
+
+# Production image, copy all the files and run next
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV production
+
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
+USER nextjs
+
+CMD ["yarn", "start"]
+```
+
+**Explanation**
+Ta có tất cả 3 stages:
+- `deps`: chỉ chạy yarn install mục đích là để ta có được folder node_modules
+- `builder`: ở đây ta sẽ lấy folder node_modules từ stage deps và tiến hành build project, ngay sau khi build ta cũng chạy lại yarn install 1 lần nữa với option --production ý bảo yarn là chỉ giữ lại những package nào được khai báo ở dependencies còn cái nào thuộc devDependencies thì loại hết nó ra khỏi node_modules (bước này giảm size đi đáng kể đó 😉)
+- `runner`: COPY lấy các thành phần thật sự cần thiết cho production từ stage builder và chạy project lên.
+  - Ở đây ta cũng tạo user nextjs với UID:GID=1001:1001 để chạy project (luôn dùng user non-root để chạy app production - for security reasons)
+
+**Run build**
+```
+docker build -t example:multistage -f .docker/multistage.dockerfile .
+```
+
+<img width="949" alt="Screenshot 2024-01-29 at 16 24 25" src="https://github.com/khanhnguyendev/dockerize/assets/44081478/655140d0-ea8a-4312-8b87-f521ab0ac252">
+
+
+**Result**
+> [!IMPORTANT]
+> Image size giảm đáng kể từ 2.15GB => 475MB (reduce ≈76.88%) 
 
 
