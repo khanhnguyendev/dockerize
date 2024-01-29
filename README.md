@@ -35,3 +35,24 @@ Note: Replace placeholders such as `<image_name>`, `<container_id>`, `<host_port
 - `Security Vulnerabilities`: Some software inside containers may have security vulnerabilities. Running as a non-root user limits the potential damage that an attacker can do in case they exploit such vulnerabilities.
 
 - `Principle of Least Privilege`: The principle of least privilege suggests that processes and users should have the minimum level of access required to perform their tasks. Running containers with the root user violates this principle and increases the attack surface.
+
+# Using Trivy to scan container image to detect security vulnerabilities in Docker images and container systems.
+
+### Trivy Cheat Sheet
+
+| Task                                            | Command                                                                                               |
+|--------------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| **Scan a Docker image:**                         | `trivy <image_name>:<tag>`                                                                            |
+| **Scan all registries for an image:**            | `trivy --remote <image_name>`                                                                         |
+| **Scan multiple images:**                        | `trivy <image_name_1> <image_name_2> ...`                                                             |
+| **Output results in JSON format:**               | `trivy --format json -o result.json <image_name>`                                                    |
+| **Specify severity levels (e.g., High):**       | `trivy --severity HIGH <image_name>`                                                                 |
+| **Specify a file containing image list:**        | `trivy --input file.txt`                                                                             |
+| **Exclude packages from the scan:**              | `trivy --ignore file.yaml <image_name>`                                                              |
+| **Update Trivy vulnerability database:**         | `trivy --download-db-only`                                                                           |
+| **List available Trivy database versions:**     | `trivy --list-db`                                                                                    |
+| **Scan with offline Trivy database:**           | `trivy --offline <image_name>`                                                                      |
+| **Output vulnerabilities in a specific template:**| `trivy --template "{{ .VulnerabilityID }}: {{ .Title }}" <image_name>`                             |
+| **Scan a Docker image and only show fixed issues:**| `trivy --only-fixed-issues <image_name>`                                                           |
+
+Replace `<image_name>`, `<tag>`, and other placeholders with your actual values. These commands cover some common use cases, but you can refer to the [Trivy documentation](https://aquasecurity.github.io/trivy/v0.20.0/) for a complete list of options and more details.
