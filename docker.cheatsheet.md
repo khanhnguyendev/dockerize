@@ -24,5 +24,6 @@
 | **Docker Compose: Stop services**             | `docker-compose down`                            |
 | **Docker Compose: View logs**                 | `docker-compose logs`                            |
 | **Docker Compose: Build and start**           | `docker-compose up --build -d`                   |
+| **Show the History of an image**              | `docker history --human --format "{{.CreatedBy}} => {{.Size}}" <image_name>`|
 
 Note: Replace placeholders such as `<image_name>`, `<container_id>`, `<host_port>`, `<container_port>`, etc., with your actual values. This cheat sheet covers basic Docker commands and Docker Compose commands.
