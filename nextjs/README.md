@@ -101,13 +101,8 @@ $ docker build -t example:basic-cache -f .docker/basic-cached.dockerfile .
 - Use Case: Emphasizes minimalism, containing only essential packages needed to run Node.js.
 - Recommendation: Suitable for environments where only the Node.js image will be deployed, and space constraints are a concern.
 - Note: Does not include common packages found in the default tag. However, unless there are specific constraints, using the default image is recommended.
-
-**Đầu tiên ta kiểm tra size của image hiện tại**
-```
-$ docker images | grep example
-```
-
-<img width="951" alt="Screenshot 2024-01-29 at 15 45 00" src="https://github.com/khanhnguyendev/dockerize/assets/44081478/e4cc4e5b-7da8-43d5-a3b1-972798fc20fd">
+  
+<img width="930" alt="Screenshot 2024-02-01 at 14 06 58" src="https://github.com/khanhnguyendev/dockerize/assets/44081478/21e11743-cbdd-423c-a7c0-cee4cc3d7a62">
 
 **Image size 2.15gb khá lớn :D**
 
