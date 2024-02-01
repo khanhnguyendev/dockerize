@@ -226,14 +226,20 @@ docker build -t example:multistage -f .docker/multistage.dockerfile .
 
 <img width="949" alt="Screenshot 2024-01-29 at 16 24 25" src="https://github.com/khanhnguyendev/dockerize/assets/44081478/655140d0-ea8a-4312-8b87-f521ab0ac252">
 
-**Explanation**
-Ta có tất cả 3 stages:
-- `deps`: chỉ chạy yarn install mục đích là để ta có được folder node_modules
-- `builder`: ở đây ta sẽ lấy folder node_modules từ stage deps và tiến hành build project, ngay sau khi build ta cũng chạy lại yarn install 1 lần nữa với option --production ý bảo yarn là chỉ giữ lại những package nào được khai báo ở dependencies còn cái nào thuộc devDependencies thì loại hết nó ra khỏi node_modules (bước này giảm size đi đáng kể đó 😉)
-- `runner`: COPY lấy các thành phần thật sự cần thiết cho production từ stage builder và chạy project lên.
-  - Ở đây ta cũng tạo user nextjs với UID:GID=1001:1001 để chạy project (luôn dùng user non-root để chạy app production - for security reasons)
-Các stage ta chỉ COPY những thứ thật cần thiết của stage trước đó làm "gốc" cho stage hiện tại
-
+**Stage deps (Install dependencies only when needed)**
+- Tạo một giai đoạn tạm thời (deps) chỉ để cài đặt các dependencies từ package.json.
+- Cài đặt dependencies dựa trên lockfile và đảm bảo rằng các dependencies không bị thay đổi giữa các lần build (--frozen-lockfile)
+**Stage builder (Rebuild the source code only when needed)**
+- Sử dụng stage `builder` để tái tạo mã nguồn chỉ khi cần thiết (khi có sự thay đổi trong source code).
+- Copy mã nguồn và dependencies từ stage `deps`.
+- Cài đặt dependencies trong môi trường production (yarn install --production --ignore-scripts --prefer-offline).
+  (Không cài các devDependencies => điều này giúp giảm dung lượng của ảnh và tăng hiệu suất bằng cách chỉ build lại khi có sự thay đổi.)
+**Stage runner (Production image)**
+- Sử dụng stage `runner` để build production cuối cùng.
+- Tạo user và group nextjs:nodejs với UID và GID là 1001 (for security reasons)
+- Copy các tệp cần thiết từ giai đoạn builder.
+- Run container with user nextjs.
+  
 **Result**
 > [!IMPORTANT]
 > Image size giảm đáng kể từ 2.15GB => 475MB (reduce ≈76.88%) 
