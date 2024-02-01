@@ -85,7 +85,7 @@ $ docker build -t example:basic-cache -f .docker/basic-cached.dockerfile .
 
 
 ## Tối giản size của Docker image
-### Image Variants
+### 1/ Image Variants
 **node:[version]**
 - Use Case: Defacto image suitable for various purposes.
 - Usage: Can be used as a throwaway container (mount your source code and start the container to run your app) or as a base for building other images.
@@ -102,7 +102,7 @@ $ docker build -t example:basic-cache -f .docker/basic-cached.dockerfile .
 - Recommendation: Suitable for environments where only the Node.js image will be deployed, and space constraints are a concern.
 - Note: Does not include common packages found in the default tag. However, unless there are specific constraints, using the default image is recommended.
 
-Đầu tiên ta kiểm tra size của image hiện tại
+**Đầu tiên ta kiểm tra size của image hiện tại**
 ```
 $ docker images | grep example
 ```
@@ -114,16 +114,17 @@ $ docker images | grep example
 > [!NOTE]
 > khi push lên registry thường nó sẽ được nén lại size thực tế trên registry cỡ bằng 1/2->1/3
 
-## Analysis
+## 2/ Optimize with Multistage
+Multi-stage build giúp bạn tạo ra một image production mà không phải giữ lại các devDependencies chỉ cần trong quá trình phát triển.
 - `package.json` ta thấy rằng có rất nhiều packages ở đó, nhưng thực tế, sau bước yarn build thì số package ta thực tế cần không nhiều như thế, nhiều package -> node_modules sẽ to, thậm chí rất to -> size image to
 - `yarn build` thì cái ta thực tế cần chỉ là folder .next hay public và node_modules mà thôi, các folder khác như pages, lib...(.eslint, .prettier...) không cần nữa
 - `node_modules` chỉ cần trước lúc yarn build, sau đó thì vì ko cần nhiều package nữa nên ta chỉ cần node_modules dạng tí hon thôi
 
-## Optimize with Multistage
-- `package.json`
-Hiện tại tất cả mọi package trong package.json đang được đặt ở dependencies, ta tách ra cái nào cần cho lúc dev ở local thì đưa nó vào devDependencies, lát nữa yarn build xong thì loại bỏ nó khỏi node_modules
-- `Multistages`
-Các stage ta chỉ COPY những thứ thật cần thiết của stage trước đó làm "gốc" cho stage hiện tại
+## 3/ Optimize `package.json`
+- Hiện tại tất cả mọi package trong package.json đang được đặt ở dependencies, ta tách ra cái nào cần cho lúc dev ở local thì đưa nó vào devDependencies
+- Reason:
+https://docs.npmjs.com/cli/v8/commands/npm-install
+<img width="829" alt="Screenshot 2024-02-01 at 14 01 07" src="https://github.com/khanhnguyendev/dockerize/assets/44081478/5ee9e086-11d7-4623-a9f5-4a47d38bfa1a">
 
 > Current package.json
 ```
@@ -186,6 +187,8 @@ Các stage ta chỉ COPY những thứ thật cần thiết của stage trước
 }
 ```
 
+Bằng cách này, image production chỉ sẽ chứa những gì cần thiết để chạy ứng dụng mà không có các devDependencies không cần thiết. Điều này giúp giảm kích thước của image và tăng tính bảo mật và hiệu suất trong môi trường production.
+
 ### Multistage Dockerfile
 ```
 # Install dependencies only when needed
@@ -221,13 +224,6 @@ USER nextjs
 CMD ["yarn", "start"]
 ```
 
-**Explanation**
-Ta có tất cả 3 stages:
-- `deps`: chỉ chạy yarn install mục đích là để ta có được folder node_modules
-- `builder`: ở đây ta sẽ lấy folder node_modules từ stage deps và tiến hành build project, ngay sau khi build ta cũng chạy lại yarn install 1 lần nữa với option --production ý bảo yarn là chỉ giữ lại những package nào được khai báo ở dependencies còn cái nào thuộc devDependencies thì loại hết nó ra khỏi node_modules (bước này giảm size đi đáng kể đó 😉)
-- `runner`: COPY lấy các thành phần thật sự cần thiết cho production từ stage builder và chạy project lên.
-  - Ở đây ta cũng tạo user nextjs với UID:GID=1001:1001 để chạy project (luôn dùng user non-root để chạy app production - for security reasons)
-
 **Run build**
 ```
 docker build -t example:multistage -f .docker/multistage.dockerfile .
@@ -235,6 +231,13 @@ docker build -t example:multistage -f .docker/multistage.dockerfile .
 
 <img width="949" alt="Screenshot 2024-01-29 at 16 24 25" src="https://github.com/khanhnguyendev/dockerize/assets/44081478/655140d0-ea8a-4312-8b87-f521ab0ac252">
 
+**Explanation**
+Ta có tất cả 3 stages:
+- `deps`: chỉ chạy yarn install mục đích là để ta có được folder node_modules
+- `builder`: ở đây ta sẽ lấy folder node_modules từ stage deps và tiến hành build project, ngay sau khi build ta cũng chạy lại yarn install 1 lần nữa với option --production ý bảo yarn là chỉ giữ lại những package nào được khai báo ở dependencies còn cái nào thuộc devDependencies thì loại hết nó ra khỏi node_modules (bước này giảm size đi đáng kể đó 😉)
+- `runner`: COPY lấy các thành phần thật sự cần thiết cho production từ stage builder và chạy project lên.
+  - Ở đây ta cũng tạo user nextjs với UID:GID=1001:1001 để chạy project (luôn dùng user non-root để chạy app production - for security reasons)
+Các stage ta chỉ COPY những thứ thật cần thiết của stage trước đó làm "gốc" cho stage hiện tại
 
 **Result**
 > [!IMPORTANT]
