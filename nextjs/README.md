@@ -85,6 +85,23 @@ $ docker build -t example:basic-cache -f .docker/basic-cached.dockerfile .
 
 
 ## Tối giản size của Docker image
+### Image Variants
+**node:[version]**
+- Use Case: Defacto image suitable for various purposes.
+- Usage: Can be used as a throwaway container (mount your source code and start the container to run your app) or as a base for building other images.
+- Note: Some tags may include Debian suite code names (e.g., bookworm, bullseye, buster), indicating the Debian release the image is based on. Explicitly specifying a suite code name can be useful if additional packages need to be installed.
+
+**node:[version]-alpine:**
+- Use Case: Focus on minimizing image size.
+- Base: Built on Alpine Linux, a lightweight distribution (~5MB).
+- Advantages: Results in slimmer images, suitable when reducing image size is a primary concern.
+- Caveats: Uses musl libc instead of glibc, which might cause issues depending on libc requirements. Additional tools (e.g., git or bash) are uncommon in Alpine-based images, encouraging users to add only necessary components in their own Dockerfiles.
+
+**node:[version]-slim:**
+- Use Case: Emphasizes minimalism, containing only essential packages needed to run Node.js.
+- Recommendation: Suitable for environments where only the Node.js image will be deployed, and space constraints are a concern.
+- Note: Does not include common packages found in the default tag. However, unless there are specific constraints, using the default image is recommended.
+
 Đầu tiên ta kiểm tra size của image hiện tại
 ```
 $ docker images | grep example
